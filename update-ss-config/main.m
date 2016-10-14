@@ -112,7 +112,7 @@ int main(int argc, const char * argv[]) {
             }
             
             HTMLNode* body = parser.body;
-            NSArray* configDivs = [body findChildrenOfClass:@"col-lg-4 text-center"];
+            NSArray* configDivs = [body findChildrenOfClass:@"col-sm-4 text-center"];
             if ([configDivs count] == 0)
             {
                 NSLog(@"Can not find match divs");
