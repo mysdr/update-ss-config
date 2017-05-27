@@ -12,74 +12,25 @@
 #import "Profile.h"
 #import "HTMLParser.h"
 
-Profile* profileWithConfigDivNode(HTMLNode* divNode)
+Profile* profileWithConfigTR(HTMLNode* TR)
 {
     Profile* profile = nil;
-    NSArray* children = [divNode children];
+    NSArray* children = [TR children];
     do
     {
-        if ([children count] < 4)
+        if ([children count] != 15)
         {
             break;
         }
         
-        NSString* server = nil;
-        NSString* port = nil;
-        NSString* password = nil;
-        NSString* method = nil;
-        NSString* status = nil;
+        NSString* server = [children[3] contents];
+        NSString* port = [children[5] contents];
+        NSString* password = [children[7] contents];
+        NSString* method = [children[9] contents];
+        NSString* status = [children[11] contents];
         
-        BOOL notMatchNode = NO;
-        for (int i=0; i<children.count; i++)
-        {
-            HTMLNode* node = children[i];
-            NSString* contents = [node contents];
-            do
-            {
-                if ([contents length] != 0 && [contents rangeOfString:@"状态"].location != NSNotFound)
-                {
-                    status = ([node firstChild] && [[node firstChild] nextSibling]) ? [[[node firstChild] nextSibling] contents] : @"";
-                    NSLog(@"==状态:%@",status);
-                    break;
-                }
-                
-                NSArray* components = [contents componentsSeparatedByString:@":"];
-                if ([components count] != 2)
-                {
-                    notMatchNode = YES;
-                    break ;
-                }
-                
-                if ([components[0] rangeOfString:@"服务器地址"].location != NSNotFound)
-                {
-                    server = components[1];
-                    NSLog(@"==%@", contents);
-                    break;
-                }
-                
-                if ([components[0] rangeOfString:@"端口"].location != NSNotFound)
-                {
-                    port = components[1];
-                    NSLog(@"==%@", contents);
-                    break;
-                }
-                
-                if ([components[0] rangeOfString:@"密码"].location != NSNotFound)
-                {
-                    password = components[1];
-                    NSLog(@"==%@", contents);
-                    break;
-                }
-                
-                if ([components[0] rangeOfString:@"加密方式"].location != NSNotFound)
-                {
-                    method = components[1];
-                    NSLog(@"==%@", contents);
-                }
-            } while (0);
-        }
-        
-        if ([server length] && [port length] && [method length] && [password length])
+        if ([server length] && [port length] && [method length] && [password length]
+            && [status rangeOfString:@"已失效"].location == NSNotFound)
         {
             profile = [[Profile alloc] init];
             profile.server = server;
@@ -90,9 +41,9 @@ Profile* profileWithConfigDivNode(HTMLNode* divNode)
         }
     } while (0);
     
-    if (profile != nil)
+    if (profile)
     {
-        NSLog(@"=================================");
+        NSLog(@"%@", profile);
     }
     
     return profile;
@@ -100,7 +51,7 @@ Profile* profileWithConfigDivNode(HTMLNode* divNode)
 
 int main(int argc, const char * argv[]) {
     @autoreleasepool {
-        NSURL* ss = [NSURL URLWithString:@"http://www.ishadowsocks.com/"];
+        NSURL* ss = [NSURL URLWithString:@"http://h6v6.com/"];
         NSError* error = nil;
         HTMLParser* parser = [[HTMLParser alloc] initWithContentsOfURL:ss error:&error];
         do
@@ -112,22 +63,31 @@ int main(int argc, const char * argv[]) {
             }
             
             HTMLNode* body = parser.body;
-            NSArray* configDivs = [body findChildrenOfClass:@"col-sm-4 text-center"];
-            if ([configDivs count] == 0)
+            
+            NSArray* configTables = [body findChildTags:@"table"];
+            if ([configTables count] != 1)
             {
-                NSLog(@"Can not find match divs");
+                NSLog(@"Can not find match config table");
                 break;
             }
             
-            NSMutableArray* profiles = [NSMutableArray array];
-            for (int i= 0; i<[configDivs count]; i++)
+            NSMutableArray<HTMLNode*> *TRs = [[configTables[0] findChildTags:@"tr"] mutableCopy];
+            if ([TRs count] < 3)
             {
-                Profile* profile = profileWithConfigDivNode(configDivs[i]);
+                NSLog(@"Can not find match tr");
+                break;
+            }
+            
+            [TRs removeObjectAtIndex:0]; //first line is table header
+            
+            NSMutableArray* profiles = [NSMutableArray array];
+            [TRs enumerateObjectsUsingBlock:^(HTMLNode * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+                Profile* profile = profileWithConfigTR(obj);
                 if (profile != nil)
                 {
                     [profiles addObject:profile];
                 }
-            }
+            }];
             
             if ([profiles count] == 0)
             {
@@ -139,7 +99,7 @@ int main(int argc, const char * argv[]) {
             Configuration* configuration = [[Configuration alloc] init];
             configuration.profiles = profiles;
             
-            NSLog(@"SaveConfiguration With Count: %zd\n%@", [profiles count], [configuration JSONDictionary]);
+            NSLog(@"SaveConfiguration With Count: %zd\n", [profiles count]);
             [ProfileManager saveConfiguration:configuration];
         } while (0);
     }

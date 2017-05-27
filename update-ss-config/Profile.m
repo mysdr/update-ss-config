@@ -70,5 +70,16 @@
     return data;
 }
 
+- (NSString *)description
+{
+    return [NSString stringWithFormat:@"\n------------------------\n"
+            "Server    : %@\n"
+            "Port      : %zd\n"
+            "Password  : %@\n"
+            "Method    : %@\n"
+            "Remarks   : %@\n"
+            "------------------------\n",
+            self.server, self.serverPort, self.password, self.method, self.remarks];
+}
 
 @end
